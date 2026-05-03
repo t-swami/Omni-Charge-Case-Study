@@ -1,6 +1,32 @@
+# Java / Maven
 target/
+*.class
+*.log
+*.jar
+*.war
+
+# IDE
 .metadata/
 .idea/
 .sts4-cache/
-*.class
-*.log
+.vscode/
+*.iml
+
+# Environment / Secrets
+.env
+admin_token.txt
+raju_token.txt
+*.txt
+!README.md
+
+# Angular / Node
+omnicharge-frontend/node_modules/
+omnicharge-frontend/dist/
+omnicharge-frontend/.angular/
+
+# SonarQube
+.scannerwork/
+
+# OS
+.DS_Store
+Thumbs.db

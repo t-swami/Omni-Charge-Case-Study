@@ -9,6 +9,7 @@ public class UserDto {
 	private String phone;
 	private String role;
 	private boolean active;
+	private java.math.BigDecimal walletBalance;
 
 	public Long getId() {
 		return id;
@@ -64,5 +65,13 @@ public class UserDto {
 
 	public void setActive(boolean active) {
 		this.active = active;
+	}
+
+	public java.math.BigDecimal getWalletBalance() {
+		return walletBalance;
+	}
+
+	public void setWalletBalance(java.math.BigDecimal walletBalance) {
+		this.walletBalance = walletBalance;
 	}
 }

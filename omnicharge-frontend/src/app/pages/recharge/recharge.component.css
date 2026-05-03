@@ -1,0 +1,51 @@
+.operator-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.operator-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  cursor: pointer;
+  text-align: center;
+}
+.operator-card:hover { border-color: var(--primary-light); }
+.operator-card.selected { border-color: var(--primary); background: #eff6ff; }
+.operator-name { font-weight: 600; font-size: 16px; margin-bottom: 4px; }
+.operator-type { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+.plan-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  cursor: pointer;
+}
+.plan-card:hover { border-color: var(--primary-light); }
+.plan-card.selected { border-color: var(--primary); background: #eff6ff; }
+.plan-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.plan-price { font-size: 24px; font-weight: 700; color: var(--primary); }
+.plan-name { font-weight: 600; margin-bottom: 12px; }
+.plan-details { font-size: 13px; color: var(--text-secondary); line-height: 1.8; }
+.plan-desc { margin-top: 8px; font-size: 12px; color: var(--text-muted); }
+
+.confirm-details {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 15px;
+}
+.confirm-row:last-child { border-bottom: none; }
+.confirm-row span { color: var(--text-secondary); }

@@ -11,6 +11,8 @@ public interface RechargePlanService {
 
     RechargePlanDto updatePlan(Long id, RechargePlanRequest request);
 
+    RechargePlanDto patchPlan(Long id, RechargePlanRequest request);
+
     void deletePlan(Long id);
 
     RechargePlanDto getPlanById(Long id);

@@ -2,6 +2,7 @@ package com.omnicharge.user_service.controller;
 
 import com.omnicharge.user_service.dto.*;
 import com.omnicharge.user_service.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,24 +14,29 @@ public class AuthController {
 	@Autowired
 	private UserService userService;
 
-	// Register regular user - no secret key, always ROLE_USER
 	@PostMapping("/register")
-	public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+	public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
 		AuthResponse response = userService.register(request);
 		return ResponseEntity.ok(response);
 	}
 
-	// Register admin - requires valid adminSecretKey in request body
 	@PostMapping("/register-admin")
-	public ResponseEntity<AuthResponse> registerAdmin(@RequestBody AdminRegisterRequest request) {
+	public ResponseEntity<AuthResponse> registerAdmin(@Valid @RequestBody AdminRegisterRequest request) {
 		AuthResponse response = userService.registerAdmin(request);
 		return ResponseEntity.ok(response);
 	}
 
-	// Login - same endpoint for both user and admin
-	@PostMapping("/login")
-	public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
-		AuthResponse response = userService.login(request);
+	/** User login endpoint — rejects admin accounts with "Invalid credentials". */
+	@PostMapping("/user/login")
+	public ResponseEntity<AuthResponse> loginUser(@Valid @RequestBody LoginRequest request) {
+		AuthResponse response = userService.loginUser(request);
+		return ResponseEntity.ok(response);
+	}
+
+	/** Admin login endpoint — rejects non-admin accounts with "Invalid credentials". */
+	@PostMapping("/admin/login")
+	public ResponseEntity<AuthResponse> loginAdmin(@Valid @RequestBody LoginRequest request) {
+		AuthResponse response = userService.loginAdmin(request);
 		return ResponseEntity.ok(response);
 	}
 }

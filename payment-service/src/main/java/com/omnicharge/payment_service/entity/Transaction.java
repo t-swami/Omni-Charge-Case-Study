@@ -20,6 +20,9 @@ public class Transaction {
 	@Column(nullable = false)
 	private String username;
 
+	@Column
+	private String userEmail;
+
 	@Column(nullable = false)
 	private String mobileNumber;
 
@@ -100,6 +103,14 @@ public class Transaction {
 
 	public void setUsername(String username) {
 		this.username = username;
+	}
+
+	public String getUserEmail() {
+		return userEmail;
+	}
+
+	public void setUserEmail(String userEmail) {
+		this.userEmail = userEmail;
 	}
 
 	public String getMobileNumber() {

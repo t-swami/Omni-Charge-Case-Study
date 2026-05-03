@@ -4,6 +4,7 @@ public class PaymentGatewayRequest {
 
 	private Long rechargeId;
 	private String paymentMethod;
+	private Double amount;
 
 	// For CARD payments
 	private String cardNumber;
@@ -108,5 +109,13 @@ public class PaymentGatewayRequest {
 
 	public void setWalletMobile(String walletMobile) {
 		this.walletMobile = walletMobile;
+	}
+
+	public Double getAmount() {
+		return amount;
+	}
+
+	public void setAmount(Double amount) {
+		this.amount = amount;
 	}
 }

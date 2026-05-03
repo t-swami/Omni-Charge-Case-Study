@@ -1,0 +1,96 @@
+<div class="main-content">
+  <div class="page-header">
+    <h1>Mobile Recharge</h1>
+    <p>Select your operator, plan, and enter your mobile number</p>
+  </div>
+
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <!-- Step 1 -->
+  <div class="card mb-3" *ngIf="step === 1">
+    <div class="card-header"><h2>Step 1: Enter Details</h2></div>
+    <div class="card-body">
+      <div class="form-group">
+        <label for="mobileNumber">Mobile Number</label>
+        <input type="text" id="mobileNumber" class="form-control" [(ngModel)]="mobileNumber"
+               placeholder="Enter 10-digit Indian mobile number (starts with 6-9)" maxlength="10">
+        <div class="error-text" *ngIf="mobileError">{{ mobileError }}</div>
+      </div>
+      <div class="form-group">
+        <div class="flex-between mb-2">
+          <label>Select Operator</label>
+          <select class="form-control" style="width: auto;" [(ngModel)]="operatorTypeFilter">
+            <option value="">All Types</option>
+            <option value="PREPAID">Prepaid</option>
+            <option value="POSTPAID">Postpaid</option>
+          </select>
+        </div>
+        <div class="loading-container" *ngIf="loadingOperators"><div class="spinner"></div><p>Loading operators...</p></div>
+        <div class="operator-grid" *ngIf="!loadingOperators">
+          <div *ngFor="let op of filteredOperators" class="operator-card" [class.selected]="selectedOperator?.id === op.id" (click)="selectOperator(op)">
+            <div class="operator-name">{{ op.name }}</div>
+            <div class="operator-type">{{ op.type }}</div>
+            <span class="badge" [ngClass]="op.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'">{{ op.status }}</span>
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg" (click)="goToStep2()" [disabled]="!selectedOperator">Continue to Select Plan</button>
+    </div>
+  </div>
+
+  <!-- Step 2 -->
+  <div class="card mb-3" *ngIf="step === 2">
+    <div class="card-header flex-between">
+      <h2>Step 2: Select Plan for {{ selectedOperator?.name }}</h2>
+      <div class="flex gap-2">
+        <select class="form-control" [(ngModel)]="planCategoryFilter">
+          <option value="">All Categories</option>
+          <option value="POPULAR">POPULAR</option>
+          <option value="DATA">DATA</option>
+          <option value="UNLIMITED">UNLIMITED</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" (click)="step = 1">← Back</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingPlans"><div class="spinner"></div><p>Loading plans...</p></div>
+      <div class="empty-state" *ngIf="!loadingPlans && filteredPlans.length === 0"><h3>No active plans available</h3></div>
+      <div class="plans-grid" *ngIf="!loadingPlans && filteredPlans.length > 0">
+        <div *ngFor="let plan of filteredPlans" class="plan-card" [class.selected]="selectedPlan?.id === plan.id" (click)="selectPlan(plan)">
+          <div class="plan-header"><span class="plan-price">₹{{ plan.price }}</span><span class="badge badge-info">{{ plan.category }}</span></div>
+          <div class="plan-name">{{ plan.planName }}</div>
+          <div class="plan-details">
+            <div><strong>Validity:</strong> {{ plan.validity }}</div>
+            <div><strong>Data:</strong> {{ plan.data }}</div>
+            <div><strong>Calls:</strong> {{ plan.calls }}</div>
+            <div><strong>SMS:</strong> {{ plan.sms }}</div>
+          </div>
+          <div class="plan-desc" *ngIf="plan.description">{{ plan.description }}</div>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-lg mt-2" (click)="goToStep3()" [disabled]="!selectedPlan">Continue to Confirm</button>
+    </div>
+  </div>
+
+  <!-- Step 3 -->
+  <div class="card" *ngIf="step === 3">
+    <div class="card-header flex-between">
+      <h2>Step 3: Confirm Recharge</h2>
+      <button class="btn btn-secondary btn-sm" (click)="step = 2">← Back</button>
+    </div>
+    <div class="card-body">
+      <div class="confirm-details">
+        <div class="confirm-row"><span>Mobile Number:</span><strong>{{ mobileNumber }}</strong></div>
+        <div class="confirm-row"><span>Operator:</span><strong>{{ selectedOperator?.name }}</strong></div>
+        <div class="confirm-row"><span>Plan:</span><strong>{{ selectedPlan?.planName }}</strong></div>
+        <div class="confirm-row"><span>Amount:</span><strong>₹{{ selectedPlan?.price }}</strong></div>
+        <div class="confirm-row"><span>Validity:</span><strong>{{ selectedPlan?.validity }}</strong></div>
+        <div class="confirm-row"><span>Data:</span><strong>{{ selectedPlan?.data }}</strong></div>
+      </div>
+      <button class="btn btn-primary btn-lg btn-block mt-3" (click)="initiateRecharge()" [disabled]="submitting">
+        {{ submitting ? 'Initiating recharge...' : 'Initiate Recharge' }}
+      </button>
+    </div>
+  </div>
+</div>

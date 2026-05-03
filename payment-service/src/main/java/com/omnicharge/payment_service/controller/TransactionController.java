@@ -19,11 +19,23 @@ public class TransactionController {
 
 	// Make payment for a recharge - any authenticated user
 	@PostMapping("/pay")
-	public ResponseEntity<TransactionDto> makePayment(Authentication authentication,
+	public ResponseEntity<TransactionDto> makePayment(
+            Authentication authentication,
+			@RequestHeader("Authorization") String token,
 			@RequestBody PaymentGatewayRequest request) {
-		TransactionDto dto = paymentService.makePayment(authentication.getName(), request);
+		TransactionDto dto = paymentService.makePayment(authentication.getName(), request, token);
 		return ResponseEntity.ok(dto);
 	}
+
+    // Top up OmniCharge Wallet - any authenticated user
+    @PostMapping("/wallet/topup")
+    public ResponseEntity<TransactionDto> topUpWallet(
+            Authentication authentication,
+            @RequestHeader("Authorization") String token,
+            @RequestBody PaymentGatewayRequest request) {
+        TransactionDto dto = paymentService.topUpWallet(authentication.getName(), request, token);
+        return ResponseEntity.ok(dto);
+    }
 
 	// Get own transactions - any authenticated user
 	@GetMapping("/my-transactions")

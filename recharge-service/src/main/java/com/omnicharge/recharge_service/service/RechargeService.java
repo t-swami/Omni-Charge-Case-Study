@@ -15,6 +15,8 @@ public interface RechargeService {
     RechargeRequestDto updateRechargeStatus(Long rechargeId,
                                              RechargeStatusUpdateRequest request);
 
+    RechargeRequestDto cancelRecharge(Long rechargeId, String username, boolean isAdmin);
+
     List<RechargeRequestDto> getMyRechargeHistory(String username);
 
     RechargeRequestDto getRechargeById(Long id, String username, boolean isAdmin);

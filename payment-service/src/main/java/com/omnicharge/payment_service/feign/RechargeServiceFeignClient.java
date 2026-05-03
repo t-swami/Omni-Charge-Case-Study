@@ -1,4 +1,4 @@
-package com.omnicharge.payment_service.feign;
+ package com.omnicharge.payment_service.feign;
 
 import com.omnicharge.payment_service.dto.RechargeStatusUpdateRequest;
 import org.springframework.cloud.openfeign.FeignClient;

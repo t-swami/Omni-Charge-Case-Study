@@ -1,0 +1,58 @@
+<div class="auth-container">
+  <div class="auth-card">
+    <div class="auth-header">
+      <h1>⚡ OmniCharge</h1>
+      <p>Create Admin Account</p>
+    </div>
+
+    <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+    <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+
+    <form (ngSubmit)="onRegister()">
+      <div class="form-group">
+        <label for="username">Username</label>
+        <input type="text" id="username" class="form-control" [(ngModel)]="form.username" name="username"
+               placeholder="3-30 chars, letters/numbers/underscores" required>
+        <div class="error-text" *ngIf="fieldErrors['username']">{{ fieldErrors['username'] }}</div>
+      </div>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" class="form-control" [(ngModel)]="form.email" name="email"
+               placeholder="admin@example.com" required>
+        <div class="error-text" *ngIf="fieldErrors['email']">{{ fieldErrors['email'] }}</div>
+      </div>
+      <div class="form-group">
+        <label for="fullName">Full Name</label>
+        <input type="text" id="fullName" class="form-control" [(ngModel)]="form.fullName" name="fullName"
+               placeholder="2-100 characters" required>
+        <div class="error-text" *ngIf="fieldErrors['fullName']">{{ fieldErrors['fullName'] }}</div>
+      </div>
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="text" id="phone" class="form-control" [(ngModel)]="form.phone" name="phone"
+               placeholder="10-digit Indian mobile" required>
+        <div class="error-text" *ngIf="fieldErrors['phone']">{{ fieldErrors['phone'] }}</div>
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" class="form-control" [(ngModel)]="form.password" name="password"
+               placeholder="Minimum 6 characters" required>
+        <div class="error-text" *ngIf="fieldErrors['password']">{{ fieldErrors['password'] }}</div>
+      </div>
+      <div class="form-group">
+        <label for="adminSecretKey">Admin Secret Key</label>
+        <input type="password" id="adminSecretKey" class="form-control" [(ngModel)]="form.adminSecretKey" name="adminSecretKey"
+               placeholder="Enter the admin secret key" required>
+        <div class="error-text" *ngIf="fieldErrors['adminSecretKey']">{{ fieldErrors['adminSecretKey'] }}</div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block btn-lg" [disabled]="loading">
+        {{ loading ? 'Creating admin...' : 'Create Admin Account' }}
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      <p>Already have an admin account? <a routerLink="/admin/login">Sign in</a></p>
+      <p class="mt-1"><a routerLink="/home">← Back to Home</a></p>
+    </div>
+  </div>
+</div>

@@ -1,119 +1,254 @@
 package com.omnicharge.notification_service.messaging;
 
 import com.omnicharge.notification_service.dto.PaymentResultMessage;
+import com.omnicharge.notification_service.service.EmailService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
 public class NotificationConsumer {
 
-    // Now listens to notification queue which receives ONLY after payment is done
+    private static final Logger log = LoggerFactory.getLogger(NotificationConsumer.class);
+
+    private static final String BORDER = "══════════════════════════════════════════════════════════════";
+    private static final String DIVIDER = "──────────────────────────────────────────────────────────────";
+
+    @Autowired
+    private EmailService emailService;
+
     @RabbitListener(queues = "${rabbitmq.notification.queue}")
     public void consumePaymentResult(PaymentResultMessage result) {
 
-        System.out.println();
-        System.out.println("==================================================");
-        System.out.println("      NOTIFICATION SERVICE - PAYMENT RESULT        ");
-        System.out.println("==================================================");
-        System.out.println("  Recharge ID     : " + result.getRechargeId());
-        System.out.println("  Transaction ID  : " + result.getTransactionId());
-        System.out.println("  Username        : " + result.getUsername());
-        System.out.println("  Mobile          : " + result.getMobileNumber());
-        System.out.println("  Operator        : " + result.getOperatorName());
-        System.out.println("  Plan            : " + result.getPlanName());
-        System.out.println("  Amount          : Rs. " + result.getAmount());
-        System.out.println("  Validity        : " + result.getValidity());
-        System.out.println("  Data            : " + result.getDataInfo());
-        System.out.println("  Payment Status  : " + result.getStatus());
+        log.info(BORDER);
+        log.info("  NOTIFICATION SERVICE — PAYMENT RESULT RECEIVED");
+        log.info(BORDER);
+        log.info("  Recharge ID     : {}", result.getRechargeId());
+        log.info("  Transaction ID  : {}", result.getTransactionId());
+        log.info("  Username        : {}", result.getUsername());
+        log.info("  Email           : {}", result.getUserEmail());
+        log.info("  Mobile          : {}", result.getMobileNumber());
+        log.info("  Operator        : {}", result.getOperatorName());
+        log.info("  Plan            : {}", result.getPlanName());
+        log.info("  Amount          : ₹{}", result.getAmount());
+        log.info("  Validity        : {}", result.getValidity());
+        log.info("  Data            : {}", result.getDataInfo());
+        log.info("  Payment Status  : {}", result.getStatus());
+
+        if (result.getPaymentReference() != null) {
+            log.info("  Payment Ref     : {}", result.getPaymentReference());
+        }
         if (result.getFailureReason() != null) {
-            System.out.println("  Failure Reason  : " + result.getFailureReason());
+            log.warn("  Failure Reason  : {}", result.getFailureReason());
         }
-        System.out.println("  Processed At    : " + result.getProcessedAt());
-        System.out.println("==================================================");
+        log.info("  Processed At    : {}", result.getProcessedAt());
+        log.info(BORDER);
 
-        sendSmsNotification(result);
-        sendEmailNotification(result);
+        // Route notification based on status
+        switch (result.getStatus()) {
+            case "SUCCESS":
+                sendSuccessNotifications(result);
+                break;
+            case "FAILED":
+                sendFailureNotifications(result);
+                break;
+            case "REFUND_PENDING":
+                sendRefundNotifications(result);
+                break;
+            default:
+                log.warn("  Unknown payment status: {}. Sending generic notification.", result.getStatus());
+                sendFailureNotifications(result);
+                break;
+        }
 
-        System.out.println();
-        System.out.println("  NOTIFICATIONS SENT SUCCESSFULLY");
-        System.out.println("  RechargeId     : " + result.getRechargeId());
-        System.out.println("  TransactionId  : " + result.getTransactionId());
-        System.out.println("  Final Status   : " + result.getStatus());
-        System.out.println("==================================================");
-        System.out.println();
+        log.info(BORDER);
+        log.info("  ✓ ALL NOTIFICATIONS DISPATCHED SUCCESSFULLY");
+        log.info("  RechargeId     : {}", result.getRechargeId());
+        log.info("  TransactionId  : {}", result.getTransactionId());
+        log.info("  Final Status   : {}", result.getStatus());
+        log.info(BORDER);
     }
 
-    private void sendSmsNotification(PaymentResultMessage result) {
-        String sms;
+    // ──────────────────────────────────────────────────────
+    //  SUCCESS notifications
+    // ──────────────────────────────────────────────────────
+    private void sendSuccessNotifications(PaymentResultMessage result) {
+        // SMS (logged)
+        String sms = String.format(
+                "Dear %s, your recharge of ₹%.0f for %s " +
+                "with %s plan %s is SUCCESSFUL. " +
+                "TxnID: %s | Validity: %s | Data: %s — Team OmniCharge",
+                result.getUsername(),
+                result.getAmount(),
+                result.getMobileNumber(),
+                result.getOperatorName(),
+                result.getPlanName(),
+                result.getTransactionId(),
+                result.getValidity(),
+                result.getDataInfo()
+        );
 
-        if ("SUCCESS".equals(result.getStatus())) {
-            sms = String.format(
-                    "Dear %s, your recharge of Rs.%.0f for %s " +
-                    "with %s plan %s is SUCCESSFUL. " +
-                    "TxnID: %s | Validity: %s | Data: %s - Team OmniCharge",
-                    result.getUsername(),
-                    result.getAmount(),
-                    result.getMobileNumber(),
-                    result.getOperatorName(),
-                    result.getPlanName(),
-                    result.getTransactionId(),
-                    result.getValidity(),
-                    result.getDataInfo()
-            );
-        } else {
-            sms = String.format(
-                    "Dear %s, your recharge of Rs.%.0f for %s FAILED. " +
-                    "Reason: %s. Please try again - Team OmniCharge",
-                    result.getUsername(),
-                    result.getAmount(),
-                    result.getMobileNumber(),
-                    result.getFailureReason() != null
-                            ? result.getFailureReason() : "Unknown error"
-            );
-        }
+        log.info(DIVIDER);
+        log.info("  📱 SMS NOTIFICATION — SUCCESS");
+        log.info(DIVIDER);
+        log.info("  To      : {}", result.getMobileNumber());
+        log.info("  Message : {}", sms);
+        log.info(DIVIDER);
 
-        System.out.println();
-        System.out.println("--------------------------------------------------");
-        System.out.println("                 SMS NOTIFICATION                  ");
-        System.out.println("--------------------------------------------------");
-        System.out.println("  To      : " + result.getMobileNumber());
-        System.out.println("  Message : " + sms);
-        System.out.println("--------------------------------------------------");
+        // Email (actually sent)
+        String emailSubject = "Recharge Successful — OmniCharge";
+        String emailBody = String.format(
+                "Dear %s,\n\n" +
+                "Your recharge was completed SUCCESSFULLY.\n\n" +
+                "Transaction ID : %s\n" +
+                "Recharge ID    : %s\n" +
+                "Mobile         : %s\n" +
+                "Operator       : %s\n" +
+                "Plan           : %s\n" +
+                "Amount         : ₹%.0f\n" +
+                "Validity       : %s\n" +
+                "Data           : %s\n" +
+                "Payment Ref    : %s\n" +
+                "Processed At   : %s\n\n" +
+                "Thank you for using OmniCharge!\n" +
+                "— Team OmniCharge",
+                result.getUsername(),
+                result.getTransactionId(),
+                result.getRechargeId(),
+                result.getMobileNumber(),
+                result.getOperatorName(),
+                result.getPlanName(),
+                result.getAmount(),
+                result.getValidity(),
+                result.getDataInfo(),
+                result.getPaymentReference(),
+                result.getProcessedAt()
+        );
+
+        log.info(DIVIDER);
+        log.info("  📧 EMAIL NOTIFICATION — SUCCESS");
+        log.info(DIVIDER);
+        emailService.sendEmail(result.getUserEmail(), emailSubject, emailBody);
+        log.info(DIVIDER);
     }
 
-    private void sendEmailNotification(PaymentResultMessage result) {
-        System.out.println();
-        System.out.println("--------------------------------------------------");
-        System.out.println("                EMAIL NOTIFICATION                 ");
-        System.out.println("--------------------------------------------------");
-        System.out.println("  To      : " + result.getUsername() + "@omnicharge.com");
-        System.out.println("  Subject : Recharge " + result.getStatus()
-                + " - OmniCharge");
-        System.out.println("  Body    :");
-        System.out.println();
-        System.out.println("  Dear " + result.getUsername() + ",");
-        System.out.println();
+    // ──────────────────────────────────────────────────────
+    //  FAILED notifications
+    // ──────────────────────────────────────────────────────
+    private void sendFailureNotifications(PaymentResultMessage result) {
+        // SMS (logged)
+        String sms = String.format(
+                "Dear %s, your recharge of ₹%.0f for %s FAILED. " +
+                "Reason: %s. Please try again. — Team OmniCharge",
+                result.getUsername(),
+                result.getAmount(),
+                result.getMobileNumber(),
+                result.getFailureReason() != null ? result.getFailureReason() : "Unknown error"
+        );
 
-        if ("SUCCESS".equals(result.getStatus())) {
-            System.out.println("  Your recharge was SUCCESSFUL.");
-        } else {
-            System.out.println("  Your recharge has FAILED.");
-            System.out.println("  Reason : " + result.getFailureReason());
-        }
+        log.info(DIVIDER);
+        log.warn("  📱 SMS NOTIFICATION — FAILED");
+        log.info(DIVIDER);
+        log.info("  To      : {}", result.getMobileNumber());
+        log.info("  Message : {}", sms);
+        log.info(DIVIDER);
 
-        System.out.println();
-        System.out.println("  Transaction ID : " + result.getTransactionId());
-        System.out.println("  Recharge ID    : " + result.getRechargeId());
-        System.out.println("  Mobile         : " + result.getMobileNumber());
-        System.out.println("  Operator       : " + result.getOperatorName());
-        System.out.println("  Plan           : " + result.getPlanName());
-        System.out.println("  Amount         : Rs. " + result.getAmount());
-        System.out.println("  Validity       : " + result.getValidity());
-        System.out.println("  Data           : " + result.getDataInfo());
-        System.out.println("  Processed At   : " + result.getProcessedAt());
-        System.out.println();
-        System.out.println("  Thank you for using OmniCharge.");
-        System.out.println("  Team OmniCharge");
-        System.out.println("--------------------------------------------------");
+        // Email (actually sent)
+        String emailSubject = "Recharge Failed — OmniCharge";
+        String emailBody = String.format(
+                "Dear %s,\n\n" +
+                "Your recharge has FAILED.\n\n" +
+                "Reason         : %s\n" +
+                "Transaction ID : %s\n" +
+                "Recharge ID    : %s\n" +
+                "Mobile         : %s\n" +
+                "Amount         : ₹%.0f\n\n" +
+                "Please try again or contact support.\n" +
+                "— Team OmniCharge",
+                result.getUsername(),
+                result.getFailureReason() != null ? result.getFailureReason() : "Unknown error",
+                result.getTransactionId(),
+                result.getRechargeId(),
+                result.getMobileNumber(),
+                result.getAmount()
+        );
+
+        log.info(DIVIDER);
+        log.warn("  📧 EMAIL NOTIFICATION — FAILED");
+        log.info(DIVIDER);
+        emailService.sendEmail(result.getUserEmail(), emailSubject, emailBody);
+        log.info(DIVIDER);
+    }
+
+    // ──────────────────────────────────────────────────────
+    //  REFUND_PENDING notifications
+    // ──────────────────────────────────────────────────────
+    private void sendRefundNotifications(PaymentResultMessage result) {
+        // SMS (logged)
+        String sms = String.format(
+                "Dear %s, your payment of ₹%.0f for %s was successful " +
+                "but the recharge could not be completed due to a service issue. " +
+                "Your amount will be refunded to your original payment method within 5-7 business days. " +
+                "Ref: %s | TxnID: %s. For support, contact helpdesk@omnicharge.com — Team OmniCharge",
+                result.getUsername(),
+                result.getAmount(),
+                result.getMobileNumber(),
+                result.getPaymentReference() != null ? result.getPaymentReference() : "N/A",
+                result.getTransactionId()
+        );
+
+        log.warn(BORDER);
+        log.warn("  📱 SMS NOTIFICATION — REFUND PENDING");
+        log.warn(BORDER);
+        log.warn("  To      : {}", result.getMobileNumber());
+        log.warn("  Message : {}", sms);
+        log.warn(BORDER);
+
+        // Email (actually sent)
+        String emailSubject = "Refund Initiated — OmniCharge";
+        String emailBody = String.format(
+                "Dear %s,\n\n" +
+                "We regret to inform you that while your payment was processed\n" +
+                "successfully, the recharge could not be completed due to a\n" +
+                "temporary service disruption.\n\n" +
+                "REFUND DETAILS:\n" +
+                "────────────────────────────────────\n" +
+                "Transaction ID  : %s\n" +
+                "Recharge ID     : %s\n" +
+                "Mobile Number   : %s\n" +
+                "Operator        : %s\n" +
+                "Plan            : %s\n" +
+                "Amount          : ₹%.0f\n" +
+                "Payment Ref     : %s\n" +
+                "Refund Status   : INITIATED\n" +
+                "Refund ETA      : 5-7 business days\n" +
+                "────────────────────────────────────\n\n" +
+                "The refund of ₹%.0f will be credited back to your original\n" +
+                "payment method within 5-7 business days. No action is needed\n" +
+                "from your side.\n\n" +
+                "If you do not receive the refund within 7 business days,\n" +
+                "please contact our support team at helpdesk@omnicharge.com\n" +
+                "with your Transaction ID: %s\n\n" +
+                "We sincerely apologize for the inconvenience.\n" +
+                "— Team OmniCharge",
+                result.getUsername(),
+                result.getTransactionId(),
+                result.getRechargeId(),
+                result.getMobileNumber(),
+                result.getOperatorName(),
+                result.getPlanName(),
+                result.getAmount(),
+                result.getPaymentReference() != null ? result.getPaymentReference() : "N/A",
+                result.getAmount(),
+                result.getTransactionId()
+        );
+
+        log.warn(DIVIDER);
+        log.warn("  📧 EMAIL NOTIFICATION — REFUND PENDING");
+        log.warn(DIVIDER);
+        emailService.sendEmail(result.getUserEmail(), emailSubject, emailBody);
+        log.warn(DIVIDER);
     }
 }

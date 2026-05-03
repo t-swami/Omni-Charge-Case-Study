@@ -1,0 +1,96 @@
+<div class="main-content">
+  <div class="page-header">
+    <h1>Transaction History</h1>
+    <p>View all your recharges and payment transactions</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab === 'recharges'" (click)="activeTab = 'recharges'">Recharges</button>
+    <button class="tab" [class.active]="activeTab === 'transactions'" (click)="activeTab = 'transactions'">Transactions</button>
+  </div>
+
+  <!-- Recharges Tab -->
+  <div *ngIf="activeTab === 'recharges'" class="card">
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingRecharges"><div class="spinner"></div><p>Loading...</p></div>
+      <div class="empty-state" *ngIf="!loadingRecharges && recharges.length === 0">
+        <h3>No recharges yet</h3>
+        <p>Start your first recharge</p>
+        <a routerLink="/recharge" class="btn btn-primary mt-2">New Recharge</a>
+      </div>
+      <div class="table-container" *ngIf="!loadingRecharges && recharges.length > 0">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th><th>Mobile</th><th>Operator</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of recharges">
+              <td>#{{ r.id }}</td>
+              <td>{{ r.mobileNumber }}</td>
+              <td>{{ r.operatorName }}</td>
+              <td>{{ r.planName }}</td>
+              <td>₹{{ r.amount }}</td>
+              <td>
+                <span class="badge" [ngClass]="{
+                  'badge-warning': r.status === 'PENDING',
+                  'badge-success': r.status === 'SUCCESS',
+                  'badge-danger': r.status === 'FAILED',
+                  'badge-secondary': r.status === 'CANCELLED'
+                }">{{ r.status }}</span>
+              </td>
+              <td>{{ r.createdAt | date:'dd MMM yyyy, HH:mm' }}</td>
+              <td>
+                <a *ngIf="r.status === 'PENDING'" [routerLink]="['/payment', r.id]" class="btn btn-primary btn-sm">Pay</a>
+                <button *ngIf="r.status === 'PENDING'" class="btn btn-danger btn-sm" (click)="cancelRecharge(r.id)" style="margin-left:4px">Cancel</button>
+                <span *ngIf="r.failureReason" style="font-size:12px;color:var(--danger);display:block;margin-top:4px">{{ r.failureReason }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions Tab -->
+  <div *ngIf="activeTab === 'transactions'" class="card">
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingTransactions"><div class="spinner"></div><p>Loading...</p></div>
+      <div class="empty-state" *ngIf="!loadingTransactions && transactions.length === 0">
+        <h3>No transactions yet</h3>
+        <p>Transactions appear after you complete a payment</p>
+      </div>
+      <div class="table-container" *ngIf="!loadingTransactions && transactions.length > 0">
+        <table>
+          <thead>
+            <tr>
+              <th>Transaction ID</th><th>Mobile</th><th>Operator</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let t of transactions">
+              <td>{{ t.transactionId }}</td>
+              <td>{{ t.mobileNumber }}</td>
+              <td>{{ t.operatorName }}</td>
+              <td>{{ t.planName }}</td>
+              <td>₹{{ t.amount }}</td>
+              <td>{{ t.paymentMethod || '-' }}</td>
+              <td>
+                <span class="badge" [ngClass]="{
+                  'badge-warning': t.status === 'PENDING',
+                  'badge-success': t.status === 'SUCCESS',
+                  'badge-danger': t.status === 'FAILED',
+                  'badge-secondary': t.status === 'CANCELLED',
+                  'badge-info': t.status === 'REFUND_PENDING'
+                }">{{ t.status }}</span>
+              </td>
+              <td>{{ t.paymentReference || '-' }}</td>
+              <td>{{ t.createdAt | date:'dd MMM yyyy, HH:mm' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

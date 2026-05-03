@@ -32,6 +32,9 @@ public class User {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Column(nullable = false, precision = 10, scale = 2)
+    private java.math.BigDecimal walletBalance = java.math.BigDecimal.ZERO;
+
     // Manual getters and setters - no Lombok @Data on entity
 
     public Long getId() {
@@ -96,5 +99,13 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public java.math.BigDecimal getWalletBalance() {
+        return walletBalance;
+    }
+
+    public void setWalletBalance(java.math.BigDecimal walletBalance) {
+        this.walletBalance = walletBalance;
     }
 }

@@ -5,6 +5,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,49 +21,54 @@ import java.util.Collections;
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
 
-    @Autowired
-    private JwtUtil jwtUtil;
+	// SonarQube Ex 4: Logger added — empty catch blocks must log the error
+	private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
 
-    @Override
-    protected void doFilterInternal(HttpServletRequest request,
-                                    HttpServletResponse response,
-                                    FilterChain filterChain)
-            throws ServletException, IOException {
+	@Autowired
+	private JwtUtil jwtUtil;
 
-        try {
-            String authHeader = request.getHeader("Authorization");
+	@Override
+	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+			throws ServletException, IOException {
 
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+		try {
+			String authHeader = request.getHeader("Authorization");
 
-            String token = authHeader.substring(7);
+			if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+				filterChain.doFilter(request, response);
+				return;
+			}
 
-            if (!jwtUtil.validateToken(token)) {
-                filterChain.doFilter(request, response);
-                return;
-            }
+			String token = authHeader.substring(7);
 
-            String username = jwtUtil.extractUsername(token);
-            String role = jwtUtil.extractRole(token);
+			if (!jwtUtil.validateToken(token)) {
+				// SonarQube Ex 4: Log instead of silently ignoring
+				log.warn("JWT token validation failed for request to {}", request.getRequestURI());
+				filterChain.doFilter(request, response);
+				return;
+			}
 
-            // Build authentication directly from JWT claims - no DB call needed
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UsernamePasswordAuthenticationToken authToken =
-                        new UsernamePasswordAuthenticationToken(
-                                username,
-                                null,
-                                Collections.singletonList(new SimpleGrantedAuthority(role))
-                        );
-                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
+			String username = jwtUtil.extractUsername(token);
+			String role = jwtUtil.extractRole(token);
 
-        } catch (Exception ex) {
-            SecurityContextHolder.clearContext();
-        }
+			// Build authentication directly from JWT claims - no DB call needed
+			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, null,
+						Collections.singletonList(new SimpleGrantedAuthority(role)));
+				authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+				SecurityContextHolder.getContext().setAuthentication(authToken);
+			}
 
-        filterChain.doFilter(request, response);
-    }
+		} catch (Exception ex) {
+			// SonarQube Ex 4: Log the error instead of empty catch block
+			log.warn("JWT authentication failed for request to {}: {}",
+					request.getRequestURI(), ex.getMessage());
+			SecurityContextHolder.clearContext();
+			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+			response.setContentType("application/json");
+			response.getWriter().write("{\"error\": \"Invalid or expired token\"}");
+			return;
+		}
+		filterChain.doFilter(request, response);
+	}
 }

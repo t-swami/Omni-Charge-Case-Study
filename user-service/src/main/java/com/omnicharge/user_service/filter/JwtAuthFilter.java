@@ -6,6 +6,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -18,6 +20,8 @@ import java.io.IOException;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    private static final Logger logger = LoggerFactory.getLogger(JwtAuthFilter.class);
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -42,6 +46,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             String token = authHeader.substring(7);
 
             if (!jwtUtil.validateToken(token)) {
+                // SonarQube Ex 4: Log instead of silently ignoring
+                logger.warn("JWT token validation failed for request to {}", request.getRequestURI());
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -63,7 +69,9 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             }
 
         } catch (Exception ex) {
-            // Clear context on any token error and let request proceed as unauthenticated
+            // SonarQube Ex 4: Log the error instead of empty catch block
+            logger.warn("JWT authentication failed for request to {}: {}",
+                    request.getRequestURI(), ex.getMessage());
             SecurityContextHolder.clearContext();
         }
 

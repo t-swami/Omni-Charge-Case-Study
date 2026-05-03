@@ -12,7 +12,10 @@ public interface PaymentService {
     TransactionDto processPayment(RechargeEventMessage event);
 
     // Called by user to actually pay - processes through payment gateway
-    TransactionDto makePayment(String username, PaymentGatewayRequest request);
+    TransactionDto makePayment(String username, PaymentGatewayRequest request, String token);
+    
+    // Top up OmniCharge Wallet
+    TransactionDto topUpWallet(String username, PaymentGatewayRequest request, String token);
 
     List<TransactionDto> getMyTransactions(String username);
 

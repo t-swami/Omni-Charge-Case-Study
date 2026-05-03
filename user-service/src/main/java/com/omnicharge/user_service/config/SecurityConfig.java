@@ -37,9 +37,8 @@ public class SecurityConfig {
 
 	@Bean
 	public AuthenticationProvider authenticationProvider() {
-		DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
+		DaoAuthenticationProvider provider = new DaoAuthenticationProvider(passwordEncoder());
 		provider.setUserDetailsService(userDetailsService);
-		provider.setPasswordEncoder(passwordEncoder());
 		return provider;
 	}
 
@@ -52,18 +51,18 @@ public class SecurityConfig {
 	public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 		http.csrf(csrf -> csrf.disable())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-				// Return 401 for unauthenticated, 403 for unauthorized
 				.exceptionHandling(ex -> ex
 						.authenticationEntryPoint((request, response, authException) -> response
 								.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized"))
 						.accessDeniedHandler((request, response, accessDeniedException) -> response
 								.sendError(HttpServletResponse.SC_FORBIDDEN, "Forbidden")))
 				.authorizeHttpRequests(
-						auth -> auth.requestMatchers("/api/auth/**").permitAll().requestMatchers("/actuator/**")
-								.permitAll().requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+						auth -> auth.requestMatchers("/api/auth/**").permitAll()
+								.requestMatchers("/actuator/**").permitAll()
+								.requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 								.requestMatchers("/api/users/all").hasAuthority("ROLE_ADMIN")
-								.requestMatchers("/api/users/promote/**").hasAuthority("ROLE_ADMIN").anyRequest()
-								.authenticated())
+								.requestMatchers("/api/users/promote/**").hasAuthority("ROLE_ADMIN")
+								.anyRequest().authenticated())
 				.authenticationProvider(authenticationProvider())
 				.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 

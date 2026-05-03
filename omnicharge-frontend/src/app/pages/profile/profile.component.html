@@ -1,0 +1,54 @@
+<div class="main-content">
+  <div class="page-header">
+    <h1>My Profile</h1>
+    <p>View and manage your account</p>
+  </div>
+
+  <div class="loading-container" *ngIf="loading"><div class="spinner"></div><p>Loading...</p></div>
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <div *ngIf="profile && !loading">
+    <div class="card mb-3">
+      <div class="card-header"><h2>Account Information</h2></div>
+      <div class="card-body">
+        <div class="profile-details">
+          <div class="profile-row"><span>Username:</span><strong>{{ profile.username }}</strong></div>
+          <div class="profile-row"><span>Full Name:</span><strong>{{ profile.fullName }}</strong></div>
+          <div class="profile-row"><span>Email:</span><strong>{{ profile.email }}</strong></div>
+          <div class="profile-row"><span>Phone:</span><strong>{{ profile.phone }}</strong></div>
+          <div class="profile-row"><span>Role:</span><strong><span class="badge" [ngClass]="profile.role === 'ROLE_ADMIN' ? 'badge-info' : 'badge-success'">{{ profile.role === 'ROLE_ADMIN' ? 'Admin' : 'User' }}</span></strong></div>
+          <div class="profile-row"><span>Status:</span><strong><span class="badge" [ngClass]="profile.active ? 'badge-success' : 'badge-danger'">{{ profile.active ? 'Active' : 'Inactive' }}</span></strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header flex-between">
+        <h2>Change Password</h2>
+        <button class="btn btn-secondary btn-sm" (click)="showChangePassword = !showChangePassword">
+          {{ showChangePassword ? 'Cancel' : 'Change Password' }}
+        </button>
+      </div>
+      <div class="card-body" *ngIf="showChangePassword">
+        <div class="alert alert-error" *ngIf="pwError">{{ pwError }}</div>
+        <div class="alert alert-success" *ngIf="pwSuccess">{{ pwSuccess }}</div>
+
+        <div class="form-group">
+          <label>Current Password</label>
+          <input type="password" class="form-control" [(ngModel)]="pwForm.currentPassword" placeholder="Enter current password">
+        </div>
+        <div class="form-group">
+          <label>New Password</label>
+          <input type="password" class="form-control" [(ngModel)]="pwForm.newPassword" placeholder="Minimum 6 characters">
+        </div>
+        <div class="form-group">
+          <label>Confirm New Password</label>
+          <input type="password" class="form-control" [(ngModel)]="pwForm.confirmPassword" placeholder="Re-enter new password">
+        </div>
+        <button class="btn btn-primary" (click)="changePassword()" [disabled]="pwLoading">
+          {{ pwLoading ? 'Changing...' : 'Update Password' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

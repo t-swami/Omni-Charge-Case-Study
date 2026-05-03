@@ -1,0 +1,215 @@
+<div class="main-content">
+  <!-- Processing / Timer Overlay -->
+  <div class="modal-backdrop" *ngIf="isProcessing">
+    <div class="modal" style="text-align: center; padding: 40px; max-width: 400px; margin: 20vh auto;">
+      <div class="spinner" style="margin: 0 auto 20px auto; width: 60px; height: 60px; border-width: 6px;"></div>
+      <h2>Processing Payment...</h2>
+      <p style="color: var(--text-secondary); margin-top: 8px;">Please do not refresh or close this page.</p>
+    </div>
+  </div>
+
+  <!-- Wallet Top-Up Success Popup -->
+  <div class="modal-backdrop" *ngIf="showSuccessPopup">
+    <div class="modal" style="text-align: center; padding: 40px; max-width: 450px; margin: 20vh auto; border-top: 5px solid var(--success);">
+      <div style="font-size: 64px; color: var(--success); margin-bottom: 10px;">✓</div>
+      <h2>Success!</h2>
+      <p style="font-size: 18px; margin: 15px 0;">₹{{ lastTopupAmount | number:'1.2-2' }} has been successfully added to your OmniCharge Wallet.</p>
+      <div class="confirm-row" style="background: #f8fafc; padding: 10px; border-radius: 8px; margin-bottom: 20px;">
+        <span>New Balance:</span><strong>₹{{ walletBalance | number:'1.2-2' }}</strong>
+      </div>
+      <button class="btn btn-primary btn-block" (click)="closePopups()">Done</button>
+    </div>
+  </div>
+
+  <!-- Add Money Modal -->
+  <div class="modal-backdrop" *ngIf="showAddMoneyModal">
+    <div class="modal" style="padding: 30px; max-width: 500px; margin: 10vh auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">Add Money to Wallet</h2>
+        <button class="btn btn-sm btn-secondary" (click)="showAddMoneyModal = false">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label>Enter Amount (₹)</label>
+        <input type="number" class="form-control" [(ngModel)]="addMoneyAmount" placeholder="0.00">
+        <div class="error-text" *ngIf="fieldErrors.addMoneyAmount">{{ fieldErrors.addMoneyAmount }}</div>
+      </div>
+
+      <div class="form-group">
+        <label>UPI ID for Payment</label>
+        <input type="text" class="form-control" [(ngModel)]="addMoneyUpi" placeholder="e.g. name@upi">
+        <div class="error-text" *ngIf="fieldErrors.addMoneyUpi">{{ fieldErrors.addMoneyUpi }}</div>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Top-ups are processed instantly via UPI.</p>
+      </div>
+
+      <div style="margin-top: 30px;" class="flex gap-2">
+        <button class="btn btn-secondary flex-1" (click)="showAddMoneyModal = false">Cancel</button>
+        <button class="btn btn-primary flex-1" (click)="confirmTopUp()">Add ₹{{ addMoneyAmount || 0 }}</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-header" style="display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <h1>Payment</h1>
+      <p>Complete payment for your recharge</p>
+    </div>
+    <div class="wallet-display-card" (click)="openAddMoney()">
+      <div class="wallet-label">OmniCharge Wallet</div>
+      <div class="wallet-value">₹{{ walletBalance | number:'1.2-2' }}</div>
+      <div class="add-money-hint">+ Add Money</div>
+    </div>
+  </div>
+
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading recharge details...</p>
+  </div>
+
+  <!-- Payment Result -->
+  <div *ngIf="paymentDone && transaction" class="card mb-3">
+    <div class="card-header"><h2>Payment Result</h2></div>
+    <div class="card-body">
+      <div class="confirm-details">
+        <div class="confirm-row"><span>Transaction ID:</span><strong>{{ transaction.transactionId }}</strong></div>
+        <div class="confirm-row"><span>Status:</span>
+          <strong>
+            <span class="badge" [ngClass]="{
+              'badge-success': transaction.status === 'SUCCESS',
+              'badge-danger': transaction.status === 'FAILED',
+              'badge-warning': transaction.status === 'PENDING'
+            }">{{ transaction.status }}</span>
+          </strong>
+        </div>
+        <div class="confirm-row"><span>Amount:</span><strong>₹{{ transaction.amount }}</strong></div>
+        <div class="confirm-row"><span>Payment Method:</span><strong>{{ transaction.paymentMethod }}</strong></div>
+        <div class="confirm-row" *ngIf="transaction.paymentReference"><span>Reference:</span><strong>{{ transaction.paymentReference }}</strong></div>
+        <div class="confirm-row" *ngIf="transaction.failureReason"><span>Failure Reason:</span><strong style="color:var(--danger)">{{ transaction.failureReason }}</strong></div>
+      </div>
+      <div class="mt-3 flex gap-2">
+        <a routerLink="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+        <a routerLink="/history" class="btn btn-secondary">View History</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recharge Details & Payment Form -->
+  <div *ngIf="!loading && recharge && !paymentDone">
+    <div class="card mb-3">
+      <div class="card-header"><h2>Recharge Details</h2></div>
+      <div class="card-body">
+        <div class="confirm-details">
+          <div class="confirm-row"><span>Recharge ID:</span><strong>#{{ recharge.id }}</strong></div>
+          <div class="confirm-row"><span>Mobile:</span><strong>{{ recharge.mobileNumber }}</strong></div>
+          <div class="confirm-row"><span>Operator:</span><strong>{{ recharge.operatorName }}</strong></div>
+          <div class="confirm-row"><span>Plan:</span><strong>{{ recharge.planName }}</strong></div>
+          <div class="confirm-row"><span>Amount:</span><strong>₹{{ recharge.amount }}</strong></div>
+          <div class="confirm-row"><span>Status:</span><strong><span class="badge badge-warning">{{ recharge.status }}</span></strong></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" *ngIf="recharge.status === 'PENDING'">
+      <div class="card-header"><h2>Select Payment Method</h2></div>
+      <div class="card-body">
+        <div class="payment-methods">
+          <label class="payment-option" [class.selected]="paymentMethod === 'CARD'">
+            <input type="radio" name="paymentMethod" value="CARD" [(ngModel)]="paymentMethod"> 💳 Credit/Debit Card
+          </label>
+          <label class="payment-option" [class.selected]="paymentMethod === 'UPI'">
+            <input type="radio" name="paymentMethod" value="UPI" [(ngModel)]="paymentMethod"> 📱 UPI
+          </label>
+          <label class="payment-option" [class.selected]="paymentMethod === 'NETBANKING'">
+            <input type="radio" name="paymentMethod" value="NETBANKING" [(ngModel)]="paymentMethod"> 🏦 Net Banking
+          </label>
+          <label class="payment-option" [class.selected]="paymentMethod === 'WALLET'">
+            <input type="radio" name="paymentMethod" value="WALLET" [(ngModel)]="paymentMethod"> 👛 OmniCharge Wallet
+          </label>
+        </div>
+
+        <!-- CARD Fields -->
+        <div *ngIf="paymentMethod === 'CARD'" class="payment-fields">
+          <div class="form-group">
+            <label>Card Number</label>
+            <input type="text" class="form-control" [(ngModel)]="cardNumber" placeholder="16-digit card number" maxlength="16">
+            <div class="error-text" *ngIf="fieldErrors.cardNumber">{{ fieldErrors.cardNumber }}</div>
+          </div>
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label>Expiry (MM/YY)</label>
+              <input type="text" class="form-control" [(ngModel)]="cardExpiry" placeholder="MM/YY" maxlength="5">
+              <div class="error-text" *ngIf="fieldErrors.cardExpiry">{{ fieldErrors.cardExpiry }}</div>
+            </div>
+            <div class="form-group">
+              <label>CVV</label>
+              <input type="password" class="form-control" [(ngModel)]="cardCvv" placeholder="3 digits" maxlength="3">
+              <div class="error-text" *ngIf="fieldErrors.cardCvv">{{ fieldErrors.cardCvv }}</div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Card Holder Name</label>
+            <input type="text" class="form-control" [(ngModel)]="cardHolderName" placeholder="Name on card">
+            <div class="error-text" *ngIf="fieldErrors.cardHolderName">{{ fieldErrors.cardHolderName }}</div>
+          </div>
+        </div>
+
+        <!-- UPI Fields -->
+        <div *ngIf="paymentMethod === 'UPI'" class="payment-fields">
+          <div class="form-group">
+            <label>UPI ID</label>
+            <input type="text" class="form-control" [(ngModel)]="upiId" placeholder="e.g. rahul@upi or rahul@okaxis">
+            <div class="error-text" *ngIf="fieldErrors.upiId">{{ fieldErrors.upiId }}</div>
+          </div>
+        </div>
+
+        <!-- NETBANKING Fields -->
+        <div *ngIf="paymentMethod === 'NETBANKING'" class="payment-fields">
+          <div class="form-group">
+            <label>Select Bank</label>
+            <select class="form-control" [(ngModel)]="bankCode">
+              <option value="">-- Select Bank --</option>
+              <option *ngFor="let bank of validBanks" [value]="bank">{{ bank }}</option>
+            </select>
+            <div class="error-text" *ngIf="fieldErrors.bankCode">{{ fieldErrors.bankCode }}</div>
+          </div>
+          <div class="form-group">
+            <label>Account Number</label>
+            <input type="text" class="form-control" [(ngModel)]="accountNumber" placeholder="9-18 digit account number">
+            <div class="error-text" *ngIf="fieldErrors.accountNumber">{{ fieldErrors.accountNumber }}</div>
+          </div>
+        </div>
+
+        <!-- WALLET Fields -->
+        <div *ngIf="paymentMethod === 'WALLET'" class="payment-fields">
+          <div class="wallet-payment-info" [class.insufficient]="walletBalance < recharge.amount">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span>Available Balance:</span>
+              <strong>₹{{ walletBalance | number:'1.2-2' }}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
+              <span>Amount to Deduct:</span>
+              <strong>₹{{ recharge.amount | number:'1.2-2' }}</strong>
+            </div>
+            
+            <div class="insufficient-msg" *ngIf="walletBalance < recharge.amount">
+              ⚠️ Insufficient Balance. Please add ₹{{ (recharge.amount - walletBalance) | number:'1.2-2' }} to continue.
+              <button class="btn btn-sm btn-primary" style="margin-top: 10px; width: 100%;" (click)="openAddMoney()">Add Money Now</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg btn-block mt-3" (click)="submitPayment()" 
+                [disabled]="isProcessing || !paymentMethod || (paymentMethod === 'WALLET' && walletBalance < recharge.amount)">
+          {{ isProcessing ? 'Processing payment...' : 'Pay ₹' + recharge.amount }}
+        </button>
+      </div>
+    </div>
+
+    <div class="alert alert-warning mt-2" *ngIf="recharge.status !== 'PENDING'">
+      This recharge is already {{ recharge.status }}. Payment cannot be processed.
+    </div>
+  </div>
+</div>

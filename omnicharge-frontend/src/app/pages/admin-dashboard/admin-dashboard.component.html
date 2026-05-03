@@ -1,0 +1,277 @@
+<div class="main-content">
+  <div class="page-header">
+    <h1>Admin Dashboard</h1>
+    <p>Manage operators, plans, users, and monitor transactions</p>
+  </div>
+
+  <div class="alert alert-error" *ngIf="errorMessage">{{ errorMessage }} <button class="close-btn" (click)="clearMessages()">×</button></div>
+  <div class="alert alert-success" *ngIf="successMessage">{{ successMessage }} <button class="close-btn" (click)="clearMessages()">×</button></div>
+
+  <div class="tabs">
+    <button class="tab" [class.active]="activeTab === 'overview'" (click)="activeTab = 'overview'">Overview</button>
+    <button class="tab" [class.active]="activeTab === 'users'" (click)="activeTab = 'users'">Users</button>
+    <button class="tab" [class.active]="activeTab === 'operators'" (click)="activeTab = 'operators'">Operators</button>
+    <button class="tab" [class.active]="activeTab === 'plans'" (click)="activeTab = 'plans'">Plans</button>
+    <button class="tab" [class.active]="activeTab === 'recharges'" (click)="activeTab = 'recharges'">Recharges</button>
+    <button class="tab" [class.active]="activeTab === 'transactions'" (click)="activeTab = 'transactions'">Transactions</button>
+  </div>
+
+  <!-- Overview -->
+  <div *ngIf="activeTab === 'overview'">
+    <div class="grid grid-4 mb-3">
+      <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value">{{ users.length }}</div></div>
+      <div class="stat-card"><div class="stat-label">Operators</div><div class="stat-value">{{ operators.length }}</div></div>
+      <div class="stat-card"><div class="stat-label">Plans</div><div class="stat-value">{{ plans.length }}</div></div>
+      <div class="stat-card"><div class="stat-label">Recharges</div><div class="stat-value">{{ recharges.length }}</div></div>
+    </div>
+    <div class="grid grid-3">
+      <div class="stat-card"><div class="stat-label">Successful Payments</div><div class="stat-value" style="color:var(--success)">{{ countByStatus('SUCCESS') }}</div></div>
+      <div class="stat-card"><div class="stat-label">Failed Payments</div><div class="stat-value" style="color:var(--danger)">{{ countByStatus('FAILED') }}</div></div>
+      <div class="stat-card"><div class="stat-label">Pending Payments</div><div class="stat-value" style="color:var(--warning)">{{ countByStatus('PENDING') }}</div></div>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div *ngIf="activeTab === 'users'" class="card">
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingUsers"><div class="spinner"></div></div>
+      <div class="table-container" *ngIf="!loadingUsers">
+        <table>
+          <thead><tr><th>ID</th><th>Username</th><th>Email</th><th>Full Name</th><th>Phone</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let u of users">
+              <td>{{ u.id }}</td><td>{{ u.username }}</td><td>{{ u.email }}</td><td>{{ u.fullName }}</td><td>{{ u.phone }}</td>
+              <td><span class="badge" [ngClass]="u.role === 'ROLE_ADMIN' ? 'badge-info' : 'badge-success'">{{ u.role === 'ROLE_ADMIN' ? 'Admin' : 'User' }}</span></td>
+              <td><span class="badge" [ngClass]="u.active ? 'badge-success' : 'badge-danger'">{{ u.active ? 'Active' : 'Inactive' }}</span></td>
+              <td><button *ngIf="u.role !== 'ROLE_ADMIN'" class="btn btn-primary btn-sm" (click)="promoteUser(u.id)">Promote to Admin</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Operators -->
+  <div *ngIf="activeTab === 'operators'">
+    <div class="mb-2 flex-between">
+      <button class="btn btn-primary" (click)="openOperatorForm()">+ Add Operator</button>
+      <div class="flex gap-2">
+        <select class="form-control" [(ngModel)]="operatorStatusFilter" (change)="operatorTypeFilter=''; applyOperatorFilter()">
+          <option value="">All Statuses</option>
+          <option value="ACTIVE">Active</option>
+          <option value="INACTIVE">Inactive</option>
+        </select>
+        <select class="form-control" [(ngModel)]="operatorTypeFilter" (change)="operatorStatusFilter=''; applyOperatorFilter()">
+          <option value="">All Types</option>
+          <option value="PREPAID">Prepaid</option>
+          <option value="POSTPAID">Postpaid</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card mb-3" *ngIf="showOperatorForm">
+      <div class="card-header flex-between">
+        <h2>{{ editingOperatorId ? 'Edit Operator' : 'Add Operator' }}</h2>
+        <button class="close-btn" (click)="showOperatorForm = false">×</button>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-2">
+          <div class="form-group"><label>Name</label><input class="form-control" [(ngModel)]="operatorForm.name" placeholder="Operator name"></div>
+          <div class="form-group"><label>Type</label>
+            <select class="form-control" [(ngModel)]="operatorForm.type">
+              <option value="">-- Select Type --</option>
+              <option value="PREPAID">PREPAID</option>
+              <option value="POSTPAID">POSTPAID</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Status</label>
+            <select class="form-control" [(ngModel)]="operatorForm.status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select>
+          </div>
+          <div class="form-group"><label>Logo URL</label><input class="form-control" [(ngModel)]="operatorForm.logoUrl" placeholder="Optional"></div>
+        </div>
+        <div class="form-group"><label>Description</label><input class="form-control" [(ngModel)]="operatorForm.description" placeholder="Optional"></div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" (click)="saveOperator()">{{ editingOperatorId ? 'Update' : 'Create' }}</button>
+          <button class="btn btn-secondary" (click)="showOperatorForm = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="loading-container" *ngIf="loadingOperators"><div class="spinner"></div></div>
+        <div class="table-container" *ngIf="!loadingOperators">
+          <table>
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let op of operators">
+                <td>{{ op.id }}</td><td>{{ op.name }}</td><td>{{ op.type }}</td>
+                <td><span class="badge" [ngClass]="op.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'">{{ op.status }}</span></td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" (click)="openOperatorForm(op)">Edit</button>
+                  <button class="btn btn-danger btn-sm" (click)="deleteOperator(op.id)" style="margin-left:4px">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plans -->
+  <div *ngIf="activeTab === 'plans'">
+    <div class="mb-2 flex-between">
+      <button class="btn btn-primary" (click)="openPlanForm()">+ Add Plan</button>
+      <div class="flex gap-2">
+        <select class="form-control" [(ngModel)]="planOperatorFilter" (change)="planCategoryFilter=''; applyPlanFilter()">
+          <option [ngValue]="0">All Operators</option>
+          <option *ngFor="let op of operators" [ngValue]="op.id">{{ op.name }}</option>
+        </select>
+        <select class="form-control" [(ngModel)]="planCategoryFilter" (change)="planOperatorFilter=0; applyPlanFilter()">
+          <option value="">All Categories</option>
+          <option value="POPULAR">POPULAR</option>
+          <option value="DATA">DATA</option>
+          <option value="UNLIMITED">UNLIMITED</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="card mb-3" *ngIf="showPlanForm">
+      <div class="card-header flex-between">
+        <h2>{{ editingPlanId ? 'Edit Plan' : 'Add Plan' }}</h2>
+        <button class="close-btn" (click)="showPlanForm = false">×</button>
+      </div>
+      <div class="card-body">
+        <div class="grid grid-2">
+          <div class="form-group"><label>Plan Name</label><input class="form-control" [(ngModel)]="planForm.planName" placeholder="Plan name"></div>
+          <div class="form-group"><label>Price (₹)</label><input type="number" class="form-control" [(ngModel)]="planForm.price" placeholder="Price"></div>
+          <div class="form-group"><label>Validity</label><input class="form-control" [(ngModel)]="planForm.validity" placeholder="e.g. 28 days"></div>
+          <div class="form-group"><label>Data</label><input class="form-control" [(ngModel)]="planForm.data" placeholder="e.g. 1.5 GB/day"></div>
+          <div class="form-group"><label>Calls</label><input class="form-control" [(ngModel)]="planForm.calls" placeholder="e.g. Unlimited"></div>
+          <div class="form-group"><label>SMS</label><input class="form-control" [(ngModel)]="planForm.sms" placeholder="e.g. 100/day"></div>
+          <div class="form-group"><label>Category</label>
+            <select class="form-control" [(ngModel)]="planForm.category">
+              <option value="">-- Select Category --</option>
+              <option value="POPULAR">POPULAR</option>
+              <option value="DATA">DATA</option>
+              <option value="UNLIMITED">UNLIMITED</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Status</label>
+            <select class="form-control" [(ngModel)]="planForm.status"><option value="ACTIVE">ACTIVE</option><option value="INACTIVE">INACTIVE</option></select>
+          </div>
+          <div class="form-group"><label>Operator</label>
+            <select class="form-control" [(ngModel)]="planForm.operatorId">
+              <option [ngValue]="0">-- Select Operator --</option>
+              <option *ngFor="let op of operators" [ngValue]="op.id">{{ op.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"><label>Description</label><input class="form-control" [(ngModel)]="planForm.description" placeholder="Optional description"></div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" (click)="savePlan()">{{ editingPlanId ? 'Update' : 'Create' }}</button>
+          <button class="btn btn-secondary" (click)="showPlanForm = false">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <div class="loading-container" *ngIf="loadingPlans"><div class="spinner"></div></div>
+        <div class="table-container" *ngIf="!loadingPlans">
+          <table>
+            <thead><tr><th>ID</th><th>Plan</th><th>Price</th><th>Validity</th><th>Data</th><th>Operator</th><th>Category</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let p of plans">
+                <td>{{ p.id }}</td><td>{{ p.planName }}</td><td>₹{{ p.price }}</td><td>{{ p.validity }}</td><td>{{ p.data }}</td>
+                <td>{{ p.operatorName }}</td><td>{{ p.category }}</td>
+                <td><span class="badge" [ngClass]="p.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'">{{ p.status }}</span></td>
+                <td>
+                  <button class="btn btn-secondary btn-sm" (click)="openPlanForm(p)">Edit</button>
+                  <button class="btn btn-danger btn-sm" (click)="deletePlan(p.id)" style="margin-left:4px">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recharges -->
+  <div *ngIf="activeTab === 'recharges'" class="card">
+    <div class="card-header flex-between">
+      <h2>Recharges</h2>
+      <div class="flex gap-2">
+        <select class="form-control" [(ngModel)]="rechargeStatusFilter" (change)="rechargeMobileFilter=''; applyRechargeFilter()">
+          <option value="">All Statuses</option>
+          <option value="SUCCESS">Success</option>
+          <option value="FAILED">Failed</option>
+          <option value="PENDING">Pending</option>
+          <option value="CANCELLED">Cancelled</option>
+        </select>
+        <input type="text" class="form-control" placeholder="Search Mobile" [(ngModel)]="rechargeMobileFilter" (keyup.enter)="rechargeStatusFilter=''; applyRechargeFilter()">
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingRecharges"><div class="spinner"></div></div>
+      <div class="table-container" *ngIf="!loadingRecharges">
+        <table>
+          <thead><tr><th>ID</th><th>User</th><th>Mobile</th><th>Operator</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of recharges">
+              <td>#{{ r.id }}</td><td>{{ r.username }}</td><td>{{ r.mobileNumber }}</td><td>{{ r.operatorName }}</td>
+              <td>{{ r.planName }}</td><td>₹{{ r.amount }}</td>
+              <td><span class="badge" [ngClass]="{
+                'badge-warning': r.status === 'PENDING', 'badge-success': r.status === 'SUCCESS',
+                'badge-danger': r.status === 'FAILED', 'badge-secondary': r.status === 'CANCELLED'
+              }">{{ r.status }}</span></td>
+              <td>{{ r.createdAt | date:'dd MMM, HH:mm' }}</td>
+              <td><button *ngIf="r.status === 'PENDING'" class="btn btn-danger btn-sm" (click)="cancelRecharge(r.id)">Cancel</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Transactions -->
+  <div *ngIf="activeTab === 'transactions'" class="card">
+    <div class="card-header flex-between">
+      <h2>Transactions</h2>
+      <div class="flex gap-2">
+        <select class="form-control" [(ngModel)]="transactionStatusFilter" (change)="transactionMobileFilter=''; applyTransactionFilter()">
+          <option value="">All Statuses</option>
+          <option value="SUCCESS">Success</option>
+          <option value="FAILED">Failed</option>
+          <option value="PENDING">Pending</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="REFUND_PENDING">Refund Pending</option>
+        </select>
+        <input type="text" class="form-control" placeholder="Search Mobile" [(ngModel)]="transactionMobileFilter" (keyup.enter)="transactionStatusFilter=''; applyTransactionFilter()">
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="loading-container" *ngIf="loadingTransactions"><div class="spinner"></div></div>
+      <div class="table-container" *ngIf="!loadingTransactions">
+        <table>
+          <thead><tr><th>Txn ID</th><th>User</th><th>Mobile</th><th>Amount</th><th>Method</th><th>Status</th><th>Reference</th><th>Date</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let t of transactions">
+              <td>{{ t.transactionId }}</td><td>{{ t.username }}</td><td>{{ t.mobileNumber }}</td>
+              <td>₹{{ t.amount }}</td><td>{{ t.paymentMethod || '-' }}</td>
+              <td><span class="badge" [ngClass]="{
+                'badge-warning': t.status === 'PENDING', 'badge-success': t.status === 'SUCCESS',
+                'badge-danger': t.status === 'FAILED', 'badge-secondary': t.status === 'CANCELLED',
+                'badge-info': t.status === 'REFUND_PENDING'
+              }">{{ t.status }}</span></td>
+              <td>{{ t.paymentReference || '-' }}</td>
+              <td>{{ t.createdAt | date:'dd MMM, HH:mm' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

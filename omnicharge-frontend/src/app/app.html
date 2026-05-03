@@ -1,0 +1,19 @@
+<nav class="navbar" *ngIf="authService.currentUser$ | async as user">
+  <a class="navbar-brand" routerLink="/dashboard">⚡ OmniCharge</a>
+  <ul class="navbar-nav">
+    <li><a routerLink="/dashboard" routerLinkActive="active">Dashboard</a></li>
+    <li><a routerLink="/recharge" routerLinkActive="active">Recharge</a></li>
+    <li><a routerLink="/history" routerLinkActive="active">History</a></li>
+    <li><a routerLink="/profile" routerLinkActive="active">Profile</a></li>
+    <li *ngIf="user.role === 'ROLE_ADMIN'"><a routerLink="/admin/dashboard" routerLinkActive="active">Admin Panel</a></li>
+  </ul>
+  <div class="navbar-user">
+    <div>
+      <div class="user-info">{{ user.username }}</div>
+      <div class="user-role">{{ user.role === 'ROLE_ADMIN' ? 'Admin' : 'User' }}</div>
+    </div>
+    <button class="btn btn-secondary btn-sm" (click)="logout()">Logout</button>
+  </div>
+</nav>
+
+<router-outlet></router-outlet>

@@ -24,10 +24,17 @@ public class OperatorController {
 		return ResponseEntity.status(HttpStatus.CREATED).body(dto);
 	}
 
-	// Update operator - ROLE_ADMIN only
+	// Full update operator - ROLE_ADMIN only
 	@PutMapping("/{id}")
 	public ResponseEntity<OperatorDto> updateOperator(@PathVariable Long id, @RequestBody OperatorRequest request) {
 		OperatorDto dto = operatorService.updateOperator(id, request);
+		return ResponseEntity.ok(dto);
+	}
+
+	// Partial update operator - ROLE_ADMIN only
+	@PatchMapping("/{id}")
+	public ResponseEntity<OperatorDto> patchOperator(@PathVariable Long id, @RequestBody OperatorRequest request) {
+		OperatorDto dto = operatorService.patchOperator(id, request);
 		return ResponseEntity.ok(dto);
 	}
 

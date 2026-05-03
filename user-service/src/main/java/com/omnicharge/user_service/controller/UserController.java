@@ -47,4 +47,20 @@ public class UserController {
         String message = userService.changePassword(authentication.getName(), request);
         return ResponseEntity.ok(Map.of("message", message));
     }
+
+    // Wallet endpoints
+    @GetMapping("/profile/wallet")
+    public ResponseEntity<java.math.BigDecimal> getWalletBalance(Authentication authentication) {
+        return ResponseEntity.ok(userService.getWalletBalance(authentication.getName()));
+    }
+
+    @PostMapping("/profile/wallet/update")
+    public ResponseEntity<Map<String, String>> updateWalletBalance(
+            Authentication authentication,
+            @RequestParam java.math.BigDecimal amount,
+            @RequestParam boolean isTopUp) {
+        userService.updateWalletBalance(authentication.getName(), amount, isTopUp);
+        String action = isTopUp ? "added to" : "deducted from";
+        return ResponseEntity.ok(Map.of("message", "Amount ₹" + amount + " " + action + " wallet successfully"));
+    }
 }

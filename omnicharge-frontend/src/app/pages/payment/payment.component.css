@@ -1,0 +1,101 @@
+.payment-methods {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.payment-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 14px;
+}
+.payment-option:hover { border-color: var(--primary-light); }
+.payment-option.selected { border-color: var(--primary); background: #eff6ff; }
+.payment-option input[type="radio"] { accent-color: var(--primary); }
+.payment-fields { margin-top: 16px; }
+
+.confirm-details {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+.confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 15px;
+}
+.confirm-row:last-child { border-bottom: none; }
+.confirm-row span { color: var(--text-secondary); }
+
+@media (max-width: 768px) {
+  .payment-methods { grid-template-columns: 1fr 1fr; }
+}
+
+/* Modal Popup Styles */
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+/* Wallet Styles */
+.wallet-display-card {
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  color: white;
+  padding: 16px 24px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.wallet-display-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+}
+.wallet-label { font-size: 13px; opacity: 0.9; font-weight: 500; }
+.wallet-value { font-size: 24px; font-weight: 700; margin: 2px 0; }
+.add-money-hint { font-size: 11px; font-weight: 600; text-transform: uppercase; background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; display: inline-block; }
+
+.error-text {
+  color: var(--danger);
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.wallet-payment-info {
+  background: var(--bg-secondary);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+.wallet-payment-info.insufficient {
+  border-color: var(--danger);
+  background: #fef2f2;
+}
+.insufficient-msg {
+  margin-top: 15px;
+  color: var(--danger);
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.flex-1 { flex: 1; }

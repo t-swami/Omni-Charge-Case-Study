@@ -7,47 +7,82 @@ import java.util.List;
 @Table(name = "operators")
 public class Operator {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String name;
+	@Column(nullable = false, unique = true)
+	private String name;
 
-    @Column(nullable = false)
-    private String type;
+	@Column(nullable = false)
+	private String type;
 
-    @Column(nullable = false)
-    private String status;
+	@Column(nullable = false)
+	private String status;
 
-    @Column
-    private String logoUrl;
+	@Column
+	private String logoUrl;
 
-    @Column
-    private String description;
+	@Column
+	private String description;
 
-    // One operator has many recharge plans
-    @OneToMany(mappedBy = "operator", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<RechargePlan> rechargePlans;
+	// One operator has many recharge plans
+	@OneToMany(mappedBy = "operator", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+	private List<RechargePlan> rechargePlans;
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+	public Long getId() {
+		return id;
+	}
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+	public void setId(Long id) {
+		this.id = id;
+	}
 
-    public String getType() { return type; }
-    public void setType(String type) { this.type = type; }
+	public String getName() {
+		return name;
+	}
 
-    public String getStatus() { return status; }
-    public void setStatus(String status) { this.status = status; }
+	public void setName(String name) {
+		this.name = name;
+	}
 
-    public String getLogoUrl() { return logoUrl; }
-    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+	public String getType() {
+		return type;
+	}
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+	public void setType(String type) {
+		this.type = type;
+	}
 
-    public List<RechargePlan> getRechargePlans() { return rechargePlans; }
-    public void setRechargePlans(List<RechargePlan> rechargePlans) { this.rechargePlans = rechargePlans; }
+	public String getStatus() {
+		return status;
+	}
+
+	public void setStatus(String status) {
+		this.status = status;
+	}
+
+	public String getLogoUrl() {
+		return logoUrl;
+	}
+
+	public void setLogoUrl(String logoUrl) {
+		this.logoUrl = logoUrl;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	public List<RechargePlan> getRechargePlans() {
+		return rechargePlans;
+	}
+
+	public void setRechargePlans(List<RechargePlan> rechargePlans) {
+		this.rechargePlans = rechargePlans;
+	}
 }

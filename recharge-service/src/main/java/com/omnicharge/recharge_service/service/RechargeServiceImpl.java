@@ -6,6 +6,9 @@ import com.omnicharge.recharge_service.entity.RechargeStatus;
 import com.omnicharge.recharge_service.feign.OperatorFeignClient;
 import com.omnicharge.recharge_service.messaging.RechargeEventPublisher;
 import com.omnicharge.recharge_service.repository.RechargeRepository;
+import com.omnicharge.recharge_service.security.JwtUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,6 +18,8 @@ import java.util.stream.Collectors;
 @Service
 public class RechargeServiceImpl implements RechargeService {
 
+    private static final Logger log = LoggerFactory.getLogger(RechargeServiceImpl.class);
+
     @Autowired
     private RechargeRepository rechargeRepository;
 
@@ -23,6 +28,9 @@ public class RechargeServiceImpl implements RechargeService {
 
     @Autowired
     private RechargeEventPublisher rechargeEventPublisher;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @Override
     public RechargeRequestDto initiateRecharge(String username,
@@ -82,6 +90,22 @@ public class RechargeServiceImpl implements RechargeService {
         RechargeRequest saved = rechargeRepository.save(rechargeRequest);
 
         RechargeEventMessage event = buildEventMessage(saved);
+
+        // Extract email from JWT and attach to event
+        if (authToken != null && authToken.startsWith("Bearer ")) {
+            try {
+                String email = jwtUtil.extractEmail(authToken.substring(7));
+                event.setUserEmail(email);
+                log.info("  ✓ Extracted email from JWT: {}", email);
+            } catch (Exception ex) {
+                // Token might not contain email — gracefully handle
+                log.warn("  ⚠ Could not extract email from JWT: {}", ex.getMessage());
+                event.setUserEmail(null);
+            }
+        } else {
+            log.warn("  ⚠ No Authorization header found — email will be null");
+        }
+
         rechargeEventPublisher.publishRechargeEvent(event);
 
         return mapToDto(saved);
@@ -103,6 +127,35 @@ public class RechargeServiceImpl implements RechargeService {
         }
 
         rechargeRepository.save(recharge);
+        return mapToDto(recharge);
+    }
+
+    /**
+     * Cancel a PENDING recharge. Only the owner or an admin can cancel.
+     * Cannot cancel if recharge is already SUCCESS, FAILED, or CANCELLED.
+     */
+    @Override
+    public RechargeRequestDto cancelRecharge(Long rechargeId, String username, boolean isAdmin) {
+        RechargeRequest recharge = rechargeRepository.findById(rechargeId)
+                .orElseThrow(() -> new RuntimeException(
+                        "Recharge not found with id: " + rechargeId));
+
+        // Authorization check — only owner or admin
+        if (!isAdmin && !recharge.getUsername().equals(username)) {
+            throw new RuntimeException("Access denied. You can only cancel your own recharge");
+        }
+
+        // Only PENDING recharges can be cancelled
+        if (recharge.getStatus() != RechargeStatus.PENDING) {
+            throw new RuntimeException(
+                    "Cannot cancel recharge. Current status is " + recharge.getStatus().name()
+                    + ". Only PENDING recharges can be cancelled");
+        }
+
+        recharge.setStatus(RechargeStatus.CANCELLED);
+        recharge.setFailureReason("Cancelled");
+        rechargeRepository.save(recharge);
+
         return mapToDto(recharge);
     }
 
@@ -148,7 +201,7 @@ public class RechargeServiceImpl implements RechargeService {
                     .collect(Collectors.toList());
         } catch (IllegalArgumentException ex) {
             throw new RuntimeException(
-                    "Invalid status. Valid values: PENDING, SUCCESS, FAILED");
+                    "Invalid status. Valid values: PENDING, SUCCESS, FAILED, CANCELLED");
         }
     }
 

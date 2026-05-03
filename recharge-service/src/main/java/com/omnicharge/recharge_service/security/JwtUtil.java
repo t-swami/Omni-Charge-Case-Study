@@ -25,6 +25,10 @@ public class JwtUtil {
         return getClaims(token).get("role", String.class);
     }
 
+    public String extractEmail(String token) {
+        return getClaims(token).get("email", String.class);
+    }
+
     public boolean validateToken(String token) {
         try {
             getClaims(token);

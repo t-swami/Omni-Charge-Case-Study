@@ -1,4 +1,4 @@
-package com.omnicharge.user_service.service;
+ package com.omnicharge.user_service.service;
 
 import com.omnicharge.user_service.dto.*;
 
@@ -10,7 +10,9 @@ public interface UserService {
 
 	AuthResponse registerAdmin(AdminRegisterRequest request);
 
-	AuthResponse login(LoginRequest request);
+	AuthResponse loginUser(LoginRequest request);
+
+	AuthResponse loginAdmin(LoginRequest request);
 
 	UserDto getUserProfile(String username);
 
@@ -19,4 +21,8 @@ public interface UserService {
 	UserDto promoteToAdmin(Long userId);
 
 	String changePassword(String username, ChangePasswordRequest request);
+
+	java.math.BigDecimal getWalletBalance(String username);
+
+	void updateWalletBalance(String username, java.math.BigDecimal amount, boolean isTopUp);
 }

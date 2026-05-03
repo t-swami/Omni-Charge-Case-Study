@@ -4,7 +4,12 @@ import com.omnicharge.operator_service.dto.OperatorDto;
 import com.omnicharge.operator_service.dto.OperatorRequest;
 import com.omnicharge.operator_service.entity.Operator;
 import com.omnicharge.operator_service.repository.OperatorRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -13,10 +18,13 @@ import java.util.stream.Collectors;
 @Service
 public class OperatorServiceImpl implements OperatorService {
 
+    private static final Logger log = LoggerFactory.getLogger(OperatorServiceImpl.class);
+
     @Autowired
     private OperatorRepository operatorRepository;
 
     @Override
+    @CacheEvict(value = "operators", allEntries = true)
     public OperatorDto addOperator(OperatorRequest request) {
         if (operatorRepository.existsByName(request.getName())) {
             throw new RuntimeException("Operator already exists with name: " + request.getName());
@@ -30,10 +38,15 @@ public class OperatorServiceImpl implements OperatorService {
         operator.setDescription(request.getDescription());
 
         operatorRepository.save(operator);
+        log.info("Operator added: {} — operators cache evicted", operator.getName());
         return mapToDto(operator);
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "operators",      allEntries = true),
+            @CacheEvict(value = "operator-by-id", key = "#id")
+    })
     public OperatorDto updateOperator(Long id, OperatorRequest request) {
         Operator operator = operatorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Operator not found with id: " + id));
@@ -45,25 +58,68 @@ public class OperatorServiceImpl implements OperatorService {
         operator.setDescription(request.getDescription());
 
         operatorRepository.save(operator);
+        log.info("Operator updated: id={} — operator cache evicted", id);
+        return mapToDto(operator);
+    }
+
+    /**
+     * Partial update — only updates non-null fields from the request.
+     */
+    @Override
+    @Caching(evict = {
+            @CacheEvict(value = "operators",      allEntries = true),
+            @CacheEvict(value = "operator-by-id", key = "#id")
+    })
+    public OperatorDto patchOperator(Long id, OperatorRequest request) {
+        Operator operator = operatorRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Operator not found with id: " + id));
+
+        if (request.getName() != null) {
+            operator.setName(request.getName());
+        }
+        if (request.getType() != null) {
+            operator.setType(request.getType());
+        }
+        if (request.getStatus() != null) {
+            operator.setStatus(request.getStatus());
+        }
+        if (request.getLogoUrl() != null) {
+            operator.setLogoUrl(request.getLogoUrl());
+        }
+        if (request.getDescription() != null) {
+            operator.setDescription(request.getDescription());
+        }
+
+        operatorRepository.save(operator);
+        log.info("Operator patched: id={} — operator cache evicted", id);
         return mapToDto(operator);
     }
 
     @Override
+    @Caching(evict = {
+            @CacheEvict(value = "operators",      allEntries = true),
+            @CacheEvict(value = "operator-by-id", key = "#id")
+    })
     public void deleteOperator(Long id) {
         Operator operator = operatorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Operator not found with id: " + id));
         operatorRepository.delete(operator);
+        log.info("Operator deleted: id={} — operator cache evicted", id);
     }
 
     @Override
+    @Cacheable(value = "operator-by-id", key = "#id")
     public OperatorDto getOperatorById(Long id) {
+        log.info("Cache MISS — loading operator from DB: id={}", id);
         Operator operator = operatorRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Operator not found with id: " + id));
         return mapToDto(operator);
     }
 
     @Override
+    @Cacheable(value = "operators")
     public List<OperatorDto> getAllOperators() {
+        log.info("Cache MISS — loading all operators from DB");
         return operatorRepository.findAll()
                 .stream()
                 .map(this::mapToDto)

@@ -11,6 +11,8 @@ public interface OperatorService {
 
     OperatorDto updateOperator(Long id, OperatorRequest request);
 
+    OperatorDto patchOperator(Long id, OperatorRequest request);
+
     void deleteOperator(Long id);
 
     OperatorDto getOperatorById(Long id);

@@ -1,0 +1,15 @@
+/* Admin dashboard specific styles */
+.profile-details, .confirm-details {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.profile-row, .confirm-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 14px;
+}
+.profile-row:last-child, .confirm-row:last-child { border-bottom: none; }
+.profile-row span, .confirm-row span { color: var(--text-secondary); }

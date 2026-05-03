@@ -1,0 +1,401 @@
+networks:
+  omnicharge-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  rabbitmq_data:
+  redis_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
+  sonarqube_db_data:
+
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: omnicharge-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: omnicharge-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: omnicharge-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── SonarQube Database ──────────────────────────────────────────────────────
+
+  sonarqube-db:
+    image: postgres:15-alpine
+    container_name: omnicharge-sonarqube-db
+    environment:
+      POSTGRES_USER: ${SONAR_DB_USER}
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD}
+      POSTGRES_DB: sonarqube
+    volumes:
+      - sonarqube_db_data:/var/lib/postgresql/data
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sonar -d sonarqube"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── SonarQube ───────────────────────────────────────────────────────────────
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: omnicharge-sonarqube
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonarqube
+      SONAR_JDBC_USERNAME: ${SONAR_DB_USER}
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD}
+      SONAR_ES_BOOTSTRAP_CHECKS_DISABLE: "true"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    ports:
+      - "9000:9000"
+    depends_on:
+      sonarqube-db:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9000/api/system/status | grep -q '\"status\":\"UP\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+
+  # ── Zipkin Distributed Tracing ─────────────────────────────────────────────
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: omnicharge-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:9411/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Service Discovery ───────────────────────────────────────────────────────
+
+  eureka-server:
+    build:
+      context: ./eureka-server        
+    container_name: omnicharge-eureka
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8761:8761"
+    environment:
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+    depends_on:
+      zipkin:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8761/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  # ── Config Server ───────────────────────────────────────────────────────────
+
+  config-server:
+    build:
+      context: ./config-server        
+    container_name: omnicharge-config
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8888:8888"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      CONFIG_REPO_USERNAME: ${CONFIG_REPO_USERNAME}
+      CONFIG_REPO_PASSWORD: ${CONFIG_REPO_PASSWORD}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8888/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 30s
+
+  # ── Microservices ───────────────────────────────────────────────────────────
+
+  user-service:
+    build:
+      context: ./user-service         
+    container_name: omnicharge-user
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/user_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      JWT_SECRET: ${JWT_SECRET}
+      APP_ADMIN_SECRET_KEY: ${APP_ADMIN_SECRET_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s
+
+  operator-service:
+    build:
+      context: ./operator-service
+    container_name: omnicharge-operator
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/operator_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s
+
+  recharge-service:
+    build:
+      context: ./recharge-service
+    container_name: omnicharge-recharge
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8083:8083"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/recharge_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s
+
+  payment-service:
+    build:
+      context: ./payment-service
+    container_name: omnicharge-payment
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8084:8084"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/payment_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s
+
+  notification-service:
+    build:
+      context: ./notification-service
+    container_name: omnicharge-notification
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8085:8085"
+    environment:
+      SPRING_RABBITMQ_HOST: rabbitmq
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+    container_name: omnicharge-gateway
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka-server:8761/eureka/
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      MANAGEMENT_ZIPKIN_TRACING_ENDPOINT: http://zipkin:9411/api/v2/spans
+      MANAGEMENT_TRACING_SAMPLING_PROBABILITY: "1.0"
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      operator-service:
+        condition: service_healthy
+    networks:
+      - omnicharge-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 40s

@@ -1,10 +1,12 @@
 package com.omnicharge.payment_service.dto;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
-// This message is published to notification queue after payment is processed
-public class PaymentResultMessage implements Serializable {
+/**
+ * Message published to notification queue after payment is processed.
+ * Uses Jackson JSON serialization (not Java binary serialization).
+ */
+public class PaymentResultMessage {
 
 	private Long rechargeId;
 	private String transactionId;
@@ -17,6 +19,8 @@ public class PaymentResultMessage implements Serializable {
 	private String dataInfo;
 	private String status;
 	private String failureReason;
+	private String paymentReference;
+	private String userEmail;
 	private LocalDateTime processedAt;
 
 	public Long getRechargeId() {
@@ -107,11 +111,27 @@ public class PaymentResultMessage implements Serializable {
 		this.failureReason = failureReason;
 	}
 
+	public String getPaymentReference() {
+		return paymentReference;
+	}
+
+	public void setPaymentReference(String paymentReference) {
+		this.paymentReference = paymentReference;
+	}
+
 	public LocalDateTime getProcessedAt() {
 		return processedAt;
 	}
 
 	public void setProcessedAt(LocalDateTime processedAt) {
 		this.processedAt = processedAt;
+	}
+
+	public String getUserEmail() {
+		return userEmail;
+	}
+
+	public void setUserEmail(String userEmail) {
+		this.userEmail = userEmail;
 	}
 }

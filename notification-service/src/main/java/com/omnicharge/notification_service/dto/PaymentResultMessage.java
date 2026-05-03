@@ -1,10 +1,12 @@
 package com.omnicharge.notification_service.dto;
 
-import java.io.Serializable;
 import java.time.LocalDateTime;
 
-// This matches the message published by payment-service
-public class PaymentResultMessage implements Serializable {
+/**
+ * Message received from payment-service via RabbitMQ.
+ * Uses Jackson JSON serialization (not Java binary serialization).
+ */
+public class PaymentResultMessage {
 
 	private Long rechargeId;
 	private String transactionId;
@@ -17,6 +19,8 @@ public class PaymentResultMessage implements Serializable {
 	private String dataInfo;
 	private String status;
 	private String failureReason;
+	private String paymentReference;
+	private String userEmail;
 	private LocalDateTime processedAt;
 
 	public Long getRechargeId() {
@@ -107,11 +111,27 @@ public class PaymentResultMessage implements Serializable {
 		this.failureReason = failureReason;
 	}
 
+	public String getPaymentReference() {
+		return paymentReference;
+	}
+
+	public void setPaymentReference(String paymentReference) {
+		this.paymentReference = paymentReference;
+	}
+
 	public LocalDateTime getProcessedAt() {
 		return processedAt;
 	}
 
 	public void setProcessedAt(LocalDateTime processedAt) {
 		this.processedAt = processedAt;
+	}
+
+	public String getUserEmail() {
+		return userEmail;
+	}
+
+	public void setUserEmail(String userEmail) {
+		this.userEmail = userEmail;
 	}
 }

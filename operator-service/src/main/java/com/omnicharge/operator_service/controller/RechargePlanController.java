@@ -24,11 +24,19 @@ public class RechargePlanController {
         return ResponseEntity.status(HttpStatus.CREATED).body(dto);
     }
 
-    // Update plan - ROLE_ADMIN only
+    // Full update plan - ROLE_ADMIN only
     @PutMapping("/{id}")
     public ResponseEntity<RechargePlanDto> updatePlan(@PathVariable Long id,
                                                        @RequestBody RechargePlanRequest request) {
         RechargePlanDto dto = rechargePlanService.updatePlan(id, request);
+        return ResponseEntity.ok(dto);
+    }
+
+    // Partial update plan - ROLE_ADMIN only
+    @PatchMapping("/{id}")
+    public ResponseEntity<RechargePlanDto> patchPlan(@PathVariable Long id,
+                                                      @RequestBody RechargePlanRequest request) {
+        RechargePlanDto dto = rechargePlanService.patchPlan(id, request);
         return ResponseEntity.ok(dto);
     }
 

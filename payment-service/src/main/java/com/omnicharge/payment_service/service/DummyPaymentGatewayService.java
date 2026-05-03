@@ -2,14 +2,31 @@ package com.omnicharge.payment_service.service;
 
 import com.omnicharge.payment_service.dto.PaymentGatewayRequest;
 import com.omnicharge.payment_service.dto.PaymentGatewayResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
+/**
+ * Simulated payment gateway with realistic validation.
+ * All valid payment inputs will succeed. Only format validation errors cause failure.
+ * Wallet payments only support OmniCharge Wallet (balance managed by user-service).
+ */
 @Service
 public class DummyPaymentGatewayService {
 
-	// Main method called by payment service
+	@Value("${payment.gateway.valid-banks:SBI,HDFC,ICICI,AXIS,KOTAK,BOB,PNB,CANARA,UNION,INDUSIND}")
+	private String validBanksConfig;
+
+	private List<String> getValidBanks() {
+		return Arrays.stream(validBanksConfig.split(","))
+				.map(String::trim).collect(Collectors.toList());
+	}
+
+	// Main entry point — routes to specific payment processor
 	public PaymentGatewayResponse processPayment(PaymentGatewayRequest request, Double amount) {
 		String method = request.getPaymentMethod().toUpperCase();
 
@@ -27,127 +44,72 @@ public class DummyPaymentGatewayService {
 		}
 	}
 
-	// Simulate CARD payment
+	// ── CARD Payment ────────────────────────────────────────────────────────────
+
 	private PaymentGatewayResponse processCardPayment(PaymentGatewayRequest request, Double amount) {
-		// Validate card number - must be 16 digits
 		if (request.getCardNumber() == null || !request.getCardNumber().matches("\\d{16}")) {
 			return failureResponse("Invalid card number. Must be 16 digits", "CARD", amount);
 		}
 
-		// Validate expiry - must be MM/YY format
 		if (request.getCardExpiry() == null || !request.getCardExpiry().matches("(0[1-9]|1[0-2])/\\d{2}")) {
 			return failureResponse("Invalid card expiry. Format must be MM/YY", "CARD", amount);
 		}
 
-		// Validate CVV - must be 3 digits
 		if (request.getCardCvv() == null || !request.getCardCvv().matches("\\d{3}")) {
 			return failureResponse("Invalid CVV. Must be 3 digits", "CARD", amount);
 		}
 
-		// Validate card holder name
 		if (request.getCardHolderName() == null || request.getCardHolderName().trim().isEmpty()) {
 			return failureResponse("Card holder name is required", "CARD", amount);
 		}
 
-		// Simulate specific card scenarios
-		// Card ending in 0000 is always declined
-		if (request.getCardNumber().endsWith("0000")) {
-			return failureResponse("Card declined by bank. Please contact your bank", "CARD", amount);
-		}
-
-		// Card ending in 1111 simulates insufficient funds
-		if (request.getCardNumber().endsWith("1111")) {
-			return failureResponse("Insufficient funds in your account", "CARD", amount);
-		}
-
-		// Card ending in 2222 simulates expired card
-		if (request.getCardNumber().endsWith("2222")) {
-			return failureResponse("Card has expired", "CARD", amount);
-		}
-
-		// All other valid cards succeed
-		return successResponse("CARD", amount, "CARD-" + request.getCardNumber().substring(12));
+		String lastFour = request.getCardNumber().substring(12);
+		return successResponse("CARD", amount, "CARD-" + lastFour);
 	}
 
-	// Simulate UPI payment
+	// ── UPI Payment ─────────────────────────────────────────────────────────────
+
 	private PaymentGatewayResponse processUpiPayment(PaymentGatewayRequest request, Double amount) {
-		// Validate UPI id format - must be something@bank
 		if (request.getUpiId() == null || !request.getUpiId().matches("^[a-zA-Z0-9._%+\\-]+@[a-zA-Z]{3,}$")) {
 			return failureResponse("Invalid UPI ID format. Example: rahul@upi or rahul@okaxis", "UPI", amount);
 		}
 
-		// Simulate specific UPI scenarios
-		// UPI id with "fail" fails always
-		if (request.getUpiId().toLowerCase().contains("fail")) {
-			return failureResponse("UPI transaction declined by bank", "UPI", amount);
-		}
-
-		// UPI id with "timeout" simulates timeout
-		if (request.getUpiId().toLowerCase().contains("timeout")) {
-			return failureResponse("UPI payment timed out. Please try again", "UPI", amount);
-		}
-
-		// All other valid UPI ids succeed
 		return successResponse("UPI", amount, "UPI-" + request.getUpiId());
 	}
 
-	// Simulate NETBANKING payment
+	// ── NETBANKING Payment ──────────────────────────────────────────────────────
+
 	private PaymentGatewayResponse processNetbankingPayment(PaymentGatewayRequest request, Double amount) {
-		// Validate bank code
 		if (request.getBankCode() == null || request.getBankCode().trim().isEmpty()) {
 			return failureResponse("Bank code is required", "NETBANKING", amount);
 		}
 
-		// Valid bank codes
-		java.util.List<String> validBanks = java.util.Arrays.asList("SBI", "HDFC", "ICICI", "AXIS", "KOTAK", "BOB",
-				"PNB", "CANARA", "UNION", "INDUSIND");
-
-		if (!validBanks.contains(request.getBankCode().toUpperCase())) {
-			return failureResponse("Invalid bank code. Valid codes: SBI, HDFC, ICICI, AXIS, KOTAK, "
-					+ "BOB, PNB, CANARA, UNION, INDUSIND", "NETBANKING", amount);
+		List<String> banks = getValidBanks();
+		if (!banks.contains(request.getBankCode().toUpperCase())) {
+			return failureResponse("Invalid bank code. Valid codes: " + String.join(", ", banks),
+					"NETBANKING", amount);
 		}
 
-		// Validate account number
 		if (request.getAccountNumber() == null || !request.getAccountNumber().matches("\\d{9,18}")) {
 			return failureResponse("Invalid account number. Must be 9 to 18 digits", "NETBANKING", amount);
-		}
-
-		// Simulate bank maintenance
-		if ("BOB".equals(request.getBankCode().toUpperCase())) {
-			return failureResponse("Bank of Baroda netbanking is under maintenance. Try after some time", "NETBANKING",
-					amount);
 		}
 
 		return successResponse("NETBANKING", amount, "NB-" + request.getBankCode().toUpperCase() + "-"
 				+ request.getAccountNumber().substring(request.getAccountNumber().length() - 4));
 	}
 
-	// Simulate WALLET payment
+	// ── WALLET Payment (OmniCharge Only) ─────────────────────────────────────────
+
 	private PaymentGatewayResponse processWalletPayment(PaymentGatewayRequest request, Double amount) {
-		// Validate wallet type
-		java.util.List<String> validWallets = java.util.Arrays.asList("PAYTM", "PHONEPE", "GOOGLEPAY", "AMAZONPAY",
-				"MOBIKWIK");
-
-		if (request.getWalletType() == null || !validWallets.contains(request.getWalletType().toUpperCase())) {
-			return failureResponse("Invalid wallet type. Valid: PAYTM, PHONEPE, GOOGLEPAY, " + "AMAZONPAY, MOBIKWIK",
-					"WALLET", amount);
+		// Only OmniCharge wallet is supported — balance is managed by user-service
+		if (!"OMNICHARGE".equalsIgnoreCase(request.getWalletType())) {
+			return failureResponse("Only OmniCharge Wallet is supported", "WALLET", amount);
 		}
 
-		// Validate wallet mobile
-		if (request.getWalletMobile() == null || !request.getWalletMobile().matches("^[6-9]\\d{9}$")) {
-			return failureResponse("Invalid wallet mobile number", "WALLET", amount);
-		}
-
-		// Simulate insufficient wallet balance for high amounts
-		if (amount > 500) {
-			return failureResponse(
-					"Insufficient wallet balance. Please add money to your " + request.getWalletType() + " wallet",
-					"WALLET", amount);
-		}
-
-		return successResponse("WALLET", amount,
-				request.getWalletType().toUpperCase() + "-" + request.getWalletMobile().substring(6));
+		return successResponse("WALLET", amount, "OMNICHARGE-WALLET");
 	}
+
+	// ── Response Builders ───────────────────────────────────────────────────────
 
 	private PaymentGatewayResponse successResponse(String method, Double amount, String reference) {
 		PaymentGatewayResponse response = new PaymentGatewayResponse();
