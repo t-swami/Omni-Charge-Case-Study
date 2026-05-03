@@ -1,4 +1,4 @@
-# OmniCharge Zero To Hero Guide
+# OmniCharge Guide
 
 OmniCharge is a full mobile recharge application built with Angular, Spring Boot microservices, PostgreSQL, Redis, RabbitMQ, Eureka, Config Server, Docker, Zipkin, Swagger, JaCoCo, and SonarQube.
 
